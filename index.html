@@ -3,20 +3,762 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>フセぶらフェス スタンプラリー</title>
+  <title>フセぶらフェス デジタルスタンプラリー</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      color: #222;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    header {
+      background: #111;
+      color: white;
+      padding: 28px 20px;
+      border-radius: 0 0 24px 24px;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 0;
+      opacity: 0.8;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .progress-label {
+      font-weight: bold;
+    }
+
+    .progress-number {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .bar {
+      width: 100%;
+      height: 14px;
+      background: #e5e5e5;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .bar-inner {
+      height: 100%;
+      background: #222;
+      width: 0%;
+      transition: width .3s;
+    }
+
+    .achievement {
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 10px;
+      background: #eee;
+    }
+
+    .achievement.done {
+      background: #dff5e3;
+      font-weight: bold;
+    }
+
+    .notice {
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .notice.success {
+      display: block;
+      background: #dff5e3;
+    }
+
+    .notice.warning {
+      display: block;
+      background: #fff1c9;
+    }
+
+    .notice.error {
+      display: block;
+      background: #ffdede;
+    }
+
+    .spot-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .spot {
+      display: block;
+      padding: 13px 10px;
+      text-decoration: none;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      color: #222;
+      background: #fafafa;
+    }
+
+    .spot.visited {
+      background: #222;
+      color: white;
+      border-color: #222;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+    }
+
+    .history-item:last-child {
+      border-bottom: 0;
+    }
+
+    .history-number {
+      display: inline-block;
+      width: 30px;
+      font-weight: bold;
+    }
+
+    .small {
+      color: #777;
+      font-size: 13px;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .reset {
+      background: #eee;
+      color: #444;
+    }
+
+    .complete {
+      background: #111;
+      color: white;
+      text-align: center;
+      padding: 22px;
+      border-radius: 16px;
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    .complete.show {
+      display: block;
+    }
+
+    .complete strong {
+      display: block;
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+
+    .participant {
+      word-break: break-all;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>フセぶらフェス</h1>
-  <h2>デジタルスタンプラリー</h2>
 
-  <p>布施のまちをぶらり巡って、スタンプを集めよう！</p>
+<header>
+  <div class="container">
+    <h1>フセぶらフェス</h1>
+    <p>デジタルスタンプラリー</p>
+  </div>
+</header>
 
-  <hr>
+<main class="container">
 
-  <h3>現在のスタンプ</h3>
-  <p>0個</p>
+  <div id="notice" class="notice"></div>
 
-  <button>スタンプを確認する</button>
+  <section id="completeBox" class="complete">
+    <strong>🎉 基本ミッション達成！</strong>
+    5会場＋参加店舗1店舗を巡りました。
+  </section>
+
+  <section class="card">
+    <h2>現在の進み具合</h2>
+
+    <div class="progress-row">
+      <div>
+        <div class="progress-label">イベント会場</div>
+        <div class="small">5会場を巡ろう</div>
+      </div>
+      <div id="venueCount" class="progress-number">0 / 5</div>
+    </div>
+
+    <div class="bar">
+      <div id="venueBar" class="bar-inner"></div>
+    </div>
+
+    <div class="progress-row">
+      <div>
+        <div class="progress-label">参加店舗</div>
+        <div class="small">まずは1店舗</div>
+      </div>
+      <div id="storeCount" class="progress-number">0</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>達成状況</h2>
+
+    <div id="level1" class="achievement">
+      ○ 5会場 ＋ 店舗1
+    </div>
+
+    <div id="level3" class="achievement">
+      ○ 5会場 ＋ 店舗3
+    </div>
+
+    <div id="level5" class="achievement">
+      ○ 5会場 ＋ 店舗5
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>会場</h2>
+    <div id="venueList" class="spot-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>参加店舗</h2>
+    <div id="storeList" class="spot-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>あなたの回遊履歴</h2>
+    <div id="history">
+      まだスタンプはありません。
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>テスト情報</h2>
+
+    <p class="small">
+      この試作版では、上の会場・店舗ボタンを押すことで
+      QRコードを読み取った状態を再現できます。
+    </p>
+
+    <p class="small participant">
+      匿名参加者ID：
+      <span id="participantId"></span>
+    </p>
+
+    <button class="reset" onclick="resetData()">
+      テストデータを全部消す
+    </button>
+  </section>
+
+</main>
+
+
+<script>
+
+const SPOTS = [
+
+  { id: "v1", type: "venue", name: "会場1" },
+  { id: "v2", type: "venue", name: "会場2" },
+  { id: "v3", type: "venue", name: "会場3" },
+  { id: "v4", type: "venue", name: "会場4" },
+  { id: "v5", type: "venue", name: "会場5" },
+
+  { id: "s01", type: "store", name: "参加店舗01" },
+  { id: "s02", type: "store", name: "参加店舗02" },
+  { id: "s03", type: "store", name: "参加店舗03" },
+  { id: "s04", type: "store", name: "参加店舗04" },
+  { id: "s05", type: "store", name: "参加店舗05" },
+  { id: "s06", type: "store", name: "参加店舗06" },
+  { id: "s07", type: "store", name: "参加店舗07" },
+  { id: "s08", type: "store", name: "参加店舗08" },
+  { id: "s09", type: "store", name: "参加店舗09" },
+  { id: "s10", type: "store", name: "参加店舗10" },
+  { id: "s11", type: "store", name: "参加店舗11" },
+  { id: "s12", type: "store", name: "参加店舗12" },
+  { id: "s13", type: "store", name: "参加店舗13" },
+  { id: "s14", type: "store", name: "参加店舗14" },
+  { id: "s15", type: "store", name: "参加店舗15" },
+  { id: "s16", type: "store", name: "参加店舗16" },
+  { id: "s17", type: "store", name: "参加店舗17" },
+  { id: "s18", type: "store", name: "参加店舗18" },
+  { id: "s19", type: "store", name: "参加店舗19" },
+  { id: "s20", type: "store", name: "参加店舗20" }
+
+];
+
+
+function getParticipantId() {
+
+  let id = localStorage.getItem("fuseburaParticipantId");
+
+  if (!id) {
+
+    if (crypto.randomUUID) {
+      id = crypto.randomUUID();
+    } else {
+      id =
+        "participant-" +
+        Date.now() +
+        "-" +
+        Math.random().toString(36).slice(2);
+    }
+
+    localStorage.setItem(
+      "fuseburaParticipantId",
+      id
+    );
+  }
+
+  return id;
+}
+
+
+function getHistory() {
+
+  try {
+
+    return JSON.parse(
+      localStorage.getItem("fuseburaHistory")
+    ) || [];
+
+  } catch {
+
+    return [];
+
+  }
+
+}
+
+
+function saveHistory(history) {
+
+  localStorage.setItem(
+    "fuseburaHistory",
+    JSON.stringify(history)
+  );
+
+}
+
+
+function acquireStamp(spotId) {
+
+  const spot = SPOTS.find(
+    s => s.id === spotId
+  );
+
+  if (!spot) {
+    showNotice(
+      "このQRコードは登録されていません。",
+      "error"
+    );
+    return;
+  }
+
+
+  const history = getHistory();
+
+  const last =
+    history.length > 0
+      ? history[history.length - 1]
+      : null;
+
+
+  if (last && last.spotId === spotId) {
+
+    showNotice(
+      "同じ場所を連続して取得することはできません。",
+      "warning"
+    );
+
+    return;
+
+  }
+
+
+  history.push({
+
+    spotId: spot.id,
+
+    name: spot.name,
+
+    type: spot.type,
+
+    timestamp: new Date().toISOString()
+
+  });
+
+
+  saveHistory(history);
+
+
+  showNotice(
+    "✅ 「" +
+    spot.name +
+    "」のスタンプを取得しました！",
+    "success"
+  );
+
+}
+
+
+function showNotice(message, type) {
+
+  const el =
+    document.getElementById("notice");
+
+  el.className =
+    "notice " + type;
+
+  el.textContent = message;
+
+}
+
+
+function render() {
+
+  const history = getHistory();
+
+  const visited =
+    new Set(
+      history.map(item => item.spotId)
+    );
+
+
+  const venues =
+    SPOTS.filter(
+      spot =>
+        spot.type === "venue" &&
+        visited.has(spot.id)
+    );
+
+
+  const stores =
+    SPOTS.filter(
+      spot =>
+        spot.type === "store" &&
+        visited.has(spot.id)
+    );
+
+
+  const venueCount =
+    venues.length;
+
+  const storeCount =
+    stores.length;
+
+
+  document.getElementById(
+    "venueCount"
+  ).textContent =
+    venueCount + " / 5";
+
+
+  document.getElementById(
+    "storeCount"
+  ).textContent =
+    storeCount + "店舗";
+
+
+  document.getElementById(
+    "venueBar"
+  ).style.width =
+    Math.min(
+      venueCount / 5 * 100,
+      100
+    ) + "%";
+
+
+  updateAchievement(
+    "level1",
+    venueCount >= 5 &&
+    storeCount >= 1
+  );
+
+
+  updateAchievement(
+    "level3",
+    venueCount >= 5 &&
+    storeCount >= 3
+  );
+
+
+  updateAchievement(
+    "level5",
+    venueCount >= 5 &&
+    storeCount >= 5
+  );
+
+
+  if (
+    venueCount >= 5 &&
+    storeCount >= 1
+  ) {
+
+    document
+      .getElementById("completeBox")
+      .classList.add("show");
+
+  }
+
+
+  renderSpots(
+    "venueList",
+    "venue",
+    visited
+  );
+
+
+  renderSpots(
+    "storeList",
+    "store",
+    visited
+  );
+
+
+  renderHistory(history);
+
+
+  document.getElementById(
+    "participantId"
+  ).textContent =
+    getParticipantId();
+
+}
+
+
+function updateAchievement(
+  id,
+  done
+) {
+
+  const el =
+    document.getElementById(id);
+
+  if (done) {
+
+    el.classList.add("done");
+
+    el.textContent =
+      "✓ " +
+      el.textContent.replace(
+        /^[○✓]\s*/,
+        ""
+      );
+
+  }
+
+}
+
+
+function renderSpots(
+  elementId,
+  type,
+  visited
+) {
+
+  const container =
+    document.getElementById(
+      elementId
+    );
+
+  container.innerHTML = "";
+
+
+  SPOTS
+    .filter(
+      spot =>
+        spot.type === type
+    )
+    .forEach(
+      spot => {
+
+        const link =
+          document.createElement("a");
+
+        link.href =
+          "?spot=" +
+          encodeURIComponent(
+            spot.id
+          );
+
+        link.className =
+          "spot" +
+          (
+            visited.has(spot.id)
+              ? " visited"
+              : ""
+          );
+
+        link.textContent =
+          (
+            visited.has(spot.id)
+              ? "✓ "
+              : ""
+          ) +
+          spot.name;
+
+        container.appendChild(link);
+
+      }
+    );
+
+}
+
+
+function renderHistory(history) {
+
+  const element =
+    document.getElementById(
+      "history"
+    );
+
+
+  if (history.length === 0) {
+
+    element.textContent =
+      "まだスタンプはありません。";
+
+    return;
+
+  }
+
+
+  element.innerHTML = "";
+
+
+  history.forEach(
+    (item, index) => {
+
+      const row =
+        document.createElement("div");
+
+      row.className =
+        "history-item";
+
+
+      const date =
+        new Date(
+          item.timestamp
+        );
+
+
+      row.innerHTML =
+
+        '<span class="history-number">' +
+        (index + 1) +
+        ".</span>" +
+
+        "<strong>" +
+        item.name +
+        "</strong>" +
+
+        '<div class="small">' +
+        date.toLocaleString("ja-JP") +
+        "</div>";
+
+
+      element.appendChild(row);
+
+    }
+  );
+
+}
+
+
+function resetData() {
+
+  if (
+    !confirm(
+      "テスト用のスタンプ履歴をすべて削除しますか？"
+    )
+  ) {
+    return;
+  }
+
+
+  localStorage.removeItem(
+    "fuseburaHistory"
+  );
+
+  location.href =
+    location.pathname;
+
+}
+
+
+const params =
+  new URLSearchParams(
+    location.search
+  );
+
+
+const scanSpot =
+  params.get("spot");
+
+
+if (scanSpot) {
+
+  acquireStamp(scanSpot);
+
+}
+
+
+render();
+
+</script>
+
 </body>
 </html>
