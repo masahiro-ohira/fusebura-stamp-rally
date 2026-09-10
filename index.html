@@ -341,30 +341,48 @@ const SPOTS = [
 
 
 function getParticipantId() {
+  const params = new URLSearchParams(location.search);
+  const urlId = params.get("pid");
 
-  let id = localStorage.getItem("fuseburaParticipantId");
+  let id =
+    urlId ||
+    localStorage.getItem("fuseburaParticipantId");
 
   if (!id) {
-
     if (crypto.randomUUID) {
       id = crypto.randomUUID();
     } else {
       id =
-        "participant-" +
+        "participant_" +
         Date.now() +
-        "-" +
+        "_" +
         Math.random().toString(36).slice(2);
     }
+  }
 
-    localStorage.setItem(
-      "fuseburaParticipantId",
-      id
+  localStorage.setItem(
+    "fuseburaParticipantId",
+    id
+  );
+
+  if (urlId !== id) {
+    params.set("pid", id);
+
+    const newUrl =
+      location.pathname +
+      "?" +
+      params.toString() +
+      location.hash;
+
+    history.replaceState(
+      null,
+      "",
+      newUrl
     );
   }
 
   return id;
 }
-
 
 function getHistory() {
 
@@ -393,8 +411,7 @@ function saveHistory(history) {
 }
 
 
-function acquireStamp(spotId) {
-
+async function acquireStamp(spotId) {
   const spot = SPOTS.find(
     s => s.id === spotId
   );
@@ -407,50 +424,70 @@ function acquireStamp(spotId) {
     return;
   }
 
+  const participantId = getParticipantId();
 
-  const history = getHistory();
+  try {
+    const response = await fetch("/api", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "stamp",
+        participantId: participantId,
+        spotId: spotId
+      })
+    });
 
-  const last =
-    history.length > 0
-      ? history[history.length - 1]
-      : null;
+    const data = await response.json();
 
+    if (Array.isArray(data.history)) {
+      const history = data.history.map(item => ({
+        spotId: item.spotId ?? item.spot_id,
+        name: item.name,
+        type: item.type,
+        timestamp:
+          item.timestamp ??
+          item.acquired_at,
+        scanOrder:
+          item.scanOrder ??
+          item.scan_order
+      }));
 
-  if (last && last.spotId === spotId) {
+      saveHistory(history);
+    }
+
+    if (!response.ok || !data.ok) {
+      showNotice(
+        data.message ||
+          data.error ||
+          "スタンプを取得できませんでした。",
+        response.status === 409
+          ? "warning"
+          : "error"
+      );
+
+      render();
+      return;
+    }
 
     showNotice(
-      "同じ場所を連続して取得することはできません。",
-      "warning"
+      "✅「" +
+        (data.stamp?.name || spot.name) +
+        "」のスタンプを取得しました！",
+      "success"
     );
 
-    return;
+    render();
 
+  } catch (error) {
+    console.error(error);
+
+    showNotice(
+      "通信エラーが発生しました。通信状態を確認してもう一度お試しください。",
+      "error"
+    );
   }
-
-
-  history.push({
-
-    spotId: spot.id,
-
-    name: spot.name,
-
-    type: spot.type,
-
-    timestamp: new Date().toISOString()
-
-  });
-
-
-  saveHistory(history);
-
-
-  showNotice(
-    "✅ 「" +
-    spot.name +
-    "」のスタンプを取得しました！",
-    "success"
-  );
-
 }
 
 
