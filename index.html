@@ -410,7 +410,58 @@ function saveHistory(history) {
 
 }
 
+async function loadHistoryFromD1() {
+  const participantId = getParticipantId();
 
+  try {
+    const response = await fetch(
+      "/api?participantId=" +
+        encodeURIComponent(participantId),
+      {
+        cache: "no-store"
+      }
+    );
+
+    const data = await response.json();
+
+    if (
+      !response.ok ||
+      !data.ok ||
+      !Array.isArray(data.history)
+    ) {
+      throw new Error(
+        data.message ||
+        data.error ||
+        "履歴を取得できませんでした。"
+      );
+    }
+
+    const history = data.history.map(item => ({
+      spotId:
+        item.spotId ??
+        item.spot_id,
+      name: item.name,
+      type: item.type,
+      timestamp:
+        item.timestamp ??
+        item.acquired_at,
+      scanOrder:
+        item.scanOrder ??
+        item.scan_order
+    }));
+
+    saveHistory(history);
+
+    return history;
+  } catch (error) {
+    console.error(
+      "D1履歴読み込みエラー:",
+      error
+    );
+
+    return getHistory();
+  }
+}
 async function acquireStamp(spotId) {
   const spot = SPOTS.find(
     s => s.id === spotId
@@ -776,24 +827,25 @@ function resetData() {
 }
 
 
-const params =
-  new URLSearchParams(
-    location.search
-  );
+async function initializePage() {
+  await loadHistoryFromD1();
 
+  const params =
+    new URLSearchParams(
+      location.search
+    );
 
-const scanSpot =
-  params.get("spot");
+  const scanSpot =
+    params.get("spot");
 
-
-if (scanSpot) {
-
-  acquireStamp(scanSpot);
-
+  if (scanSpot) {
+    await acquireStamp(scanSpot);
+  } else {
+    render();
+  }
 }
 
-
-render();
+initializePage();
 
 </script>
 
