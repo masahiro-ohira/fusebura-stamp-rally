@@ -806,8 +806,7 @@ function renderHistory(history) {
 }
 
 
-function resetData() {
-
+async function resetData() {
   if (
     !confirm(
       "テスト用のスタンプ履歴をすべて削除しますか？"
@@ -816,16 +815,45 @@ function resetData() {
     return;
   }
 
+  const participantId = getParticipantId();
 
-  localStorage.removeItem(
-    "fuseburaHistory"
-  );
+  try {
+    const response = await fetch("/api", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "reset",
+        participantId: participantId
+      })
+    });
 
-  location.href =
-    location.pathname;
+    const data = await response.json();
 
+    if (!response.ok || !data.ok) {
+      showNotice(
+        data.message ||
+        data.error ||
+        "テストデータを削除できませんでした。",
+        "error"
+      );
+      return;
+    }
+
+    localStorage.removeItem("fuseburaHistory");
+
+    location.href = location.pathname;
+
+  } catch (error) {
+    console.error(error);
+
+    showNotice(
+      "通信エラーが発生しました。もう一度お試しください。",
+      "error"
+    );
+  }
 }
-
 
 async function initializePage() {
   await loadHistoryFromD1();
