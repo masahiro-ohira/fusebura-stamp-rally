@@ -86,15 +86,40 @@ export async function onRequest(context) {
 
       const action = body.action || "stamp";
 
-      if (action !== "stamp") {
-        return jsonResponse(
-          {
-            ok: false,
-            error: "Unknown action.",
-          },
-          400
-        );
-      }
+if (action === "reset") {
+  const participantId = String(body.participantId || "").trim();
+
+  if (!participantId) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "participantId is required.",
+      },
+      400
+    );
+  }
+
+  await env.DB
+    .prepare("DELETE FROM stamps WHERE participant_id = ?")
+    .bind(participantId)
+    .run();
+
+  return jsonResponse({
+    ok: true,
+    participantId,
+    history: [],
+  });
+}
+
+if (action !== "stamp") {
+  return jsonResponse(
+    {
+      ok: false,
+      error: "Unknown action.",
+    },
+    400
+  );
+}
 
       const spotId = String(body.spotId || "").trim();
 
