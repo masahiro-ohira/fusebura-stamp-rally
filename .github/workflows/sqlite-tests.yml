@@ -1,0 +1,26 @@
+name: SQLite stamp order regression tests
+
+on:
+  pull_request:
+    paths:
+      - 'functions/api.js'
+      - 'migrations/**'
+      - 'tests/**'
+      - '.github/workflows/sqlite-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline SQLite regression tests
+        run: python -m unittest discover -s tests -v
