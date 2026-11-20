@@ -84,25 +84,23 @@ export async function onRequest(context) {
         );
       }
 
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return jsonResponse({ ok: false, error: "Invalid request body." }, 400);
+      }
+
       const action = body.action || "stamp";
 
-if (action === "reset") {
-  return jsonResponse({
-    ok: false,
-    code: "RESET_DISABLED",
-    message: "公開APIからの履歴削除は利用できません。",
-  }, 403);
-}
+      if (action === "reset") {
+        return jsonResponse({
+          ok: false,
+          code: "RESET_DISABLED",
+          message: "公開APIからの履歴削除は利用できません。",
+        }, 403);
+      }
 
-if (action !== "stamp") {
-  return jsonResponse(
-    {
-      ok: false,
-      error: "Unknown action.",
-    },
-    400
-  );
-}
+      if (action !== "stamp") {
+        return jsonResponse({ ok: false, error: "Unknown action." }, 400);
+      }
 
       const spotId = String(body.spotId || "").trim();
 
