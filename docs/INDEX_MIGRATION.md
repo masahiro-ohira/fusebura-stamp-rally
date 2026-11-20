@@ -19,6 +19,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_stamps_participant_scan_order
 - **獲得数は引き続き DISTINCT spot_id で数える。**
 - SQLをリポジトリに追加しただけでは Cloudflare D1 のスキーマは変化しない。
 
+## Cloudflareダッシュボードでの検証環境セットアップ（手動作業）
+Cloudflare操作用の連携はこのチャットにないため、以下の作成と接続はアカウント管理者が行う。
+
+1. **Storage & databases → D1 SQL database → Create Database** から `fusebura-stamp-rally-test` を作成する。既存の `fusebura-stamp-rally-db` は選ばない。
+2. **新規作成したテストD1だけ**を開き、Consoleで `docs/PREVIEW_D1_BOOTSTRAP.sql` の全文を実行する。このファイルは既存API用の最低限の検証用スキーマと25スポットを登録する。**本番のテーブル定義を完全複製したものではない**。
+3. テストD1のConsoleで `SELECT COUNT(*) AS spot_count FROM spots;` を実行し、25を確認する。
+4. 同じ**テストD1に限り** `migrations/0001_unique_scan_order.sql` のSQLを実行する。
+5. `PRAGMA index_list('stamps');` で `idx_stamps_participant_scan_order` の `unique=1` を確認する。
+6. Cloudflare **Workers & Pages → Pagesプロジェクト fusebura-stamp-rally → Settings → Bindings** で **Preview** 環境を選び、変数名 `DB` のD1接続先をテストD1に設定する。**Production側の `DB` は変更しない。**
+7. ブランチ `fix/reset-safety-atomic-stamps` のPreviewを再デプロイし、**必ず Preview DB がテスト用であることを確認してから**E2Eテストを行う。
+8. Preview URLは外部公開されることがある。必要ならCloudflare Access等でアクセス制限する。
+
+`wrangler.toml` の自動追加は行っていない。既存Pages設定はダッシュボード管理のため、追加すると本番設定の上書き事故になる可能性がある。
+
 ## 検証（本番を変更しない）
 1. リポジトリのチェックアウトで `python -m unittest discover -s tests -v` を実行する（標準ライブラリのみ）。実際の `functions/api.js` に埋め込まれた INSERT 文とmigrationを使用する。
 2. 別の検証用D1を用意し、**公開PagesのProductionと同じD1を指していないこと**を確認する。現在リポジトリには Wrangler のDBバインディング設定がないため、これを事前に追加・確認する必要がある。
