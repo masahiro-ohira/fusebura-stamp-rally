@@ -87,28 +87,11 @@ export async function onRequest(context) {
       const action = body.action || "stamp";
 
 if (action === "reset") {
-  const participantId = String(body.participantId || "").trim();
-
-  if (!participantId) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: "participantId is required.",
-      },
-      400
-    );
-  }
-
-  await env.DB
-    .prepare("DELETE FROM stamps WHERE participant_id = ?")
-    .bind(participantId)
-    .run();
-
   return jsonResponse({
-    ok: true,
-    participantId,
-    history: [],
-  });
+    ok: false,
+    code: "RESET_DISABLED",
+    message: "公開APIからの履歴削除は利用できません。",
+  }, 403);
 }
 
 if (action !== "stamp") {
@@ -186,57 +169,40 @@ if (action !== "stamp") {
         .bind(participantId)
         .run();
 
-      // 直前に取得したスポットを確認
-      const lastStamp = await env.DB
+      // 直前の取得判定と連番採番を、挿入と同じSQL文内で実行する。
+      const result = await env.DB
         .prepare(`
-          SELECT spot_id
-          FROM stamps
-          WHERE participant_id = ?
-          ORDER BY scan_order DESC, id DESC
-          LIMIT 1
+          INSERT INTO stamps (participant_id, spot_id, scan_order)
+          SELECT ?, ?, COALESCE((
+            SELECT MAX(scan_order) FROM stamps WHERE participant_id = ?
+          ), 0) + 1
+          WHERE COALESCE((
+            SELECT spot_id FROM stamps
+            WHERE participant_id = ?
+            ORDER BY scan_order DESC, id DESC LIMIT 1
+          ), '') <> ?
         `)
-        .bind(participantId)
-        .first();
-
-      // 同じ場所の連続取得は禁止
-      if (lastStamp && lastStamp.spot_id === spotId) {
-        const history = await getHistory(env.DB, participantId);
-
-        return jsonResponse(
-          {
-            ok: false,
-            code: "CONSECUTIVE_DUPLICATE",
-            message: "同じ場所を連続して取得することはできません。",
-            participantId,
-            history,
-          },
-          409
-        );
-      }
-
-      const orderRow = await env.DB
-        .prepare(`
-          SELECT COALESCE(MAX(scan_order), 0) + 1 AS next_order
-          FROM stamps
-          WHERE participant_id = ?
-        `)
-        .bind(participantId)
-        .first();
-
-      const scanOrder = Number(orderRow?.next_order || 1);
-
-      await env.DB
-        .prepare(`
-          INSERT INTO stamps (
-            participant_id,
-            spot_id,
-            scan_order
-          )
-          VALUES (?, ?, ?)
-        `)
-        .bind(participantId, spotId, scanOrder)
+        .bind(participantId, spotId, participantId, participantId, spotId)
         .run();
 
+      if (Number(result.meta?.changes) !== 1) {
+        const history = await getHistory(env.DB, participantId);
+        return jsonResponse({
+          ok: false,
+          code: "CONSECUTIVE_DUPLICATE",
+          message: "同じ場所を連続して取得することはできません。",
+          participantId,
+          history,
+        }, 409);
+      }
+
+      const inserted = await env.DB
+        .prepare("SELECT scan_order FROM stamps WHERE id = ? AND participant_id = ?")
+        .bind(result.meta?.last_row_id, participantId)
+        .first();
+      if (!inserted) throw new Error("Inserted stamp not found.");
+
+      const scanOrder = Number(inserted.scan_order);
       const history = await getHistory(env.DB, participantId);
 
       return jsonResponse({
@@ -260,13 +226,7 @@ if (action !== "stamp") {
       405
     );
   } catch (error) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Server error.",
-        detail: String(error?.message || error),
-      },
-      500
-    );
+    console.error("API request failed", error);
+    return jsonResponse({ ok: false, error: "Server error." }, 500);
   }
 }
