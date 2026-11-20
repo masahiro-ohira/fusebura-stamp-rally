@@ -299,7 +299,7 @@
     </p>
 
     <button class="reset" onclick="resetData()">
-      テストデータを全部消す
+      テストを最初からやり直す
     </button>
   </section>
 
@@ -783,21 +783,15 @@ function renderHistory(history) {
         );
 
 
-      row.innerHTML =
-
-        '<span class="history-number">' +
-        (index + 1) +
-        ".</span>" +
-
-        "<strong>" +
-        item.name +
-        "</strong>" +
-
-        '<div class="small">' +
-        date.toLocaleString("ja-JP") +
-        "</div>";
-
-
+      const number = document.createElement("span");
+      number.className = "history-number";
+      number.textContent = (index + 1) + ".";
+      const name = document.createElement("strong");
+      name.textContent = item.name || "";
+      const dateText = document.createElement("div");
+      dateText.className = "small";
+      dateText.textContent = date.toLocaleString("ja-JP");
+      row.append(number, name, dateText);
       element.appendChild(row);
 
     }
@@ -806,53 +800,11 @@ function renderHistory(history) {
 }
 
 
-async function resetData() {
-  if (
-    !confirm(
-      "テスト用のスタンプ履歴をすべて削除しますか？"
-    )
-  ) {
-    return;
-  }
-
-  const participantId = getParticipantId();
-
-  try {
-    const response = await fetch("/api", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "reset",
-        participantId: participantId
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.ok) {
-      showNotice(
-        data.message ||
-        data.error ||
-        "テストデータを削除できませんでした。",
-        "error"
-      );
-      return;
-    }
-
-    localStorage.removeItem("fuseburaHistory");
-
-    location.href = location.pathname;
-
-  } catch (error) {
-    console.error(error);
-
-    showNotice(
-      "通信エラーが発生しました。もう一度お試しください。",
-      "error"
-    );
-  }
+function resetData() {
+  if (!confirm("このブラウザのテストを最初からやり直しますか？保存済みの履歴はサーバーから削除されません。")) return;
+  localStorage.removeItem("fuseburaParticipantId");
+  localStorage.removeItem("fuseburaHistory");
+  location.href = location.pathname;
 }
 
 async function initializePage() {
