@@ -168,20 +168,39 @@ export async function onRequest(context) {
         .run();
 
       // 直前の取得判定と連番採番を、挿入と同じSQL文内で実行する。
-      const result = await env.DB
-        .prepare(`
-          INSERT INTO stamps (participant_id, spot_id, scan_order)
-          SELECT ?, ?, COALESCE((
-            SELECT MAX(scan_order) FROM stamps WHERE participant_id = ?
-          ), 0) + 1
-          WHERE COALESCE((
-            SELECT spot_id FROM stamps
-            WHERE participant_id = ?
-            ORDER BY scan_order DESC, id DESC LIMIT 1
-          ), '') <> ?
-        `)
-        .bind(participantId, spotId, participantId, participantId, spotId)
-        .run();
+      // UNIQUE(participant_id, scan_order) 制約が競合登録を最終的に防ぐ。
+      let result;
+      try {
+        result = await env.DB
+          .prepare(`
+            INSERT INTO stamps (participant_id, spot_id, scan_order)
+            SELECT ?, ?, COALESCE((
+              SELECT MAX(scan_order) FROM stamps WHERE participant_id = ?
+            ), 0) + 1
+            WHERE COALESCE((
+              SELECT spot_id FROM stamps
+              WHERE participant_id = ?
+              ORDER BY scan_order DESC, id DESC LIMIT 1
+            ), '') <> ?
+          `)
+          .bind(participantId, spotId, participantId, participantId, spotId)
+          .run();
+      } catch (error) {
+        // 競合時、原因が取得順序のUNIQUE制約なら409で再試行を促す。
+        // その他のDB例外は上位で処理し、内部詳細を公開しない。
+        const message = String(error?.message || error);
+        if (/UNIQUE constraint failed:.*stamps\.participant_id.*stamps\.scan_order/i.test(message)) {
+          const history = await getHistory(env.DB, participantId);
+          return jsonResponse({
+            ok: false,
+            code: "STAMP_WRITE_CONFLICT",
+            message: "同時にスタンプが登録されました。履歴を確認してから、もう一度お試しください。",
+            participantId,
+            history,
+          }, 409);
+        }
+        throw error;
+      }
 
       if (Number(result.meta?.changes) !== 1) {
         const history = await getHistory(env.DB, participantId);
